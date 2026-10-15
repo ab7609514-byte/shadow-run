@@ -1,0 +1,100 @@
+
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Shadow Run</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#08091a;color:white;font-family:Arial;text-align:center}
+h1{color:#53f5ff;text-shadow:0 0 15px #00bfff;margin:16px}
+p{color:#c4c9e8}
+canvas{display:block;width:100%;max-width:600px;margin:auto;background:#10112c;border:2px solid #393c83;border-radius:12px;touch-action:manipulation}
+button{background:#753cff;color:white;border:0;border-radius:14px;padding:15px 28px;font-size:19px;margin:14px}
+</style>
+</head>
+<body>
+<h1>⚡ SHADOW RUN ⚡</h1>
+<p>المس الشاشة حتى تقفز فوق العقبات!</p>
+<canvas id="game" width="360" height="460"></canvas>
+<h2>النقاط: <span id="score">0</span></h2>
+<button id="start">ابدأ اللعب 🚀</button>
+<p>اركض، اقفز، وحقق أعلى نتيجة!</p>
+<script>
+const c=document.getElementById('game');
+const ctx=c.getContext('2d');
+let player, obstacles, score, running, ended, frame;
+function reset(){
+ player={x:65,y:355,w:30,h:40,vy:0,ground:true};
+ obstacles=[];score=0;frame=0;running=true;ended=false;
+ document.getElementById('score').textContent=0;
+}
+function jump(){
+ if(!running){if(ended)reset();return}
+ if(player.ground){player.vy=-12;player.ground=false}
+}
+c.addEventListener('pointerdown',jump);
+document.getElementById('start').onclick=()=>{
+ reset();jump();
+};
+function draw(){
+ ctx.clearRect(0,0,360,460);
+ let sky=ctx.createLinearGradient(0,0,0,460);
+ sky.addColorStop(0,'#10112c');sky.addColorStop(1,'#25205a');
+ ctx.fillStyle=sky;ctx.fillRect(0,0,360,460);
+ ctx.fillStyle='#fff';
+ for(let i=0;i<35;i++){
+  let x=(i*71)%360,y=(i*43)%300;
+  ctx.fillRect(x,y,2,2);
+ }
+ ctx.fillStyle='#20234c';
+ for(let i=0;i<9;i++){
+  let x=i*45;
+  ctx.fillRect(x,280+(i%3)*15,30,100);
+  ctx.fillStyle='#51dfff';
+  ctx.fillRect(x+8,290+(i%3)*15,4,7);
+  ctx.fillStyle='#20234c';
+ }
+ ctx.fillStyle='#090a18';ctx.fillRect(0,395,360,65);
+ ctx.strokeStyle='#50f5ff';ctx.lineWidth=3;
+ ctx.beginPath();ctx.moveTo(0,395);ctx.lineTo(360,395);ctx.stroke();
+ if(running){
+  player.vy+=0.55;player.y+=player.vy;
+  if(player.y>=355){player.y=355;player.vy=0;player.ground=true}
+  frame++;
+  if(frame%75===0)obstacles.push({x:370,w:24,h:30+Math.random()*20});
+  obstacles.forEach(o=>o.x-=4+score/100);
+  obstacles=obstacles.filter(o=>o.x>-40);
+  for(const o of obstacles){
+   if(player.x<o.x+o.w&&player.x+player.w>o.x&&player.y+player.h>395-o.h){
+    running=false;ended=true;
+   }
+  }
+  score+=0.08;
+  document.getElementById('score').textContent=Math.floor(score);
+ }
+ ctx.fillStyle='#50f5ff';ctx.shadowColor='#50f5ff';ctx.shadowBlur=15;
+ ctx.fillRect(player.x,player.y,player.w,player.h);
+ ctx.fillStyle='#10112c';ctx.fillRect(player.x+18,player.y+8,6,6);
+ ctx.shadowBlur=0;
+ ctx.fillStyle='#ff4c8b';
+ obstacles.forEach(o=>{
+  ctx.beginPath();ctx.moveTo(o.x,395);ctx.lineTo(o.x+o.w/2,395-o.h);
+  ctx.lineTo(o.x+o.w,395);ctx.fill();
+ });
+ if(!running){
+  ctx.fillStyle='rgba(0,0,0,.7)';ctx.fillRect(0,0,360,460);
+  ctx.fillStyle='#fff';ctx.textAlign='center';
+  ctx.font='bold 28px Arial';
+  ctx.fillText(ended?'انتهت اللعبة!':'جاهز؟',180,210);
+  ctx.font='18px Arial';
+  ctx.fillText('نتيجتك: '+Math.floor(score),180,250);
+  ctx.fillText('اضغط ابدأ اللعب للمحاولة مجدداً',180,290);
+ }
+ requestAnimationFrame(draw);
+}
+reset();running=false;draw();
+</script>
+</body>
+</html>
