@@ -1,100 +1,114 @@
 
+
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>Shadow Run</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>SHADOW RUN</title>
 <style>
 *{box-sizing:border-box}
-body{margin:0;background:#08091a;color:white;font-family:Arial;text-align:center}
-h1{color:#53f5ff;text-shadow:0 0 15px #00bfff;margin:16px}
-p{color:#c4c9e8}
-canvas{display:block;width:100%;max-width:600px;margin:auto;background:#10112c;border:2px solid #393c83;border-radius:12px;touch-action:manipulation}
-button{background:#753cff;color:white;border:0;border-radius:14px;padding:15px 28px;font-size:19px;margin:14px}
+body{margin:0;overflow:hidden;background:#050615;color:white;font-family:Arial}
+canvas{display:block;width:100vw;height:100vh;touch-action:manipulation}
+#hud{position:fixed;top:15px;left:15px;right:15px;display:flex;justify-content:space-between;font-weight:bold;text-shadow:0 0 12px #00f6ff;pointer-events:none}
+#title{position:fixed;top:22%;width:100%;text-align:center;pointer-events:none}
+h1{font-size:clamp(34px,9vw,62px);font-style:italic;color:#8ffaff;text-shadow:0 0 12px #00eaff,0 0 40px #a000ff;margin:0}
+p{color:#c5d7ff;letter-spacing:3px;font-size:12px}
+#menu{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#02051a66}
+.card{background:#0b1025ee;border:1px solid #45faff;border-radius:24px;padding:28px;text-align:center;width:85%;max-width:340px;box-shadow:0 0 40px #00dfff44}
+.card h2{color:#8ffaff;font-size:28px}
+button{background:linear-gradient(90deg,#40f7ff,#b0a0ff);border:0;border-radius:14px;padding:15px 26px;font-weight:bold;font-size:17px;color:#081021}
+#jump{position:fixed;bottom:30px;right:20px;border:2px solid #69ffff;background:#12294dcc;color:white;border-radius:50%;width:78px;height:78px;padding:0}
+.hidden{display:none!important}
+#hint{position:fixed;bottom:10px;left:0;width:100%;text-align:center;font-size:11px;color:#a9dfff;pointer-events:none}
 </style>
 </head>
 <body>
-<h1>⚡ SHADOW RUN ⚡</h1>
-<p>المس الشاشة حتى تقفز فوق العقبات!</p>
-<canvas id="game" width="360" height="460"></canvas>
-<h2>النقاط: <span id="score">0</span></h2>
-<button id="start">ابدأ اللعب 🚀</button>
-<p>اركض، اقفز، وحقق أعلى نتيجة!</p>
+<canvas id="c"></canvas>
+<div id="hud"><span>DISTANCE <b id="score">0</b></span><span>GOLD ◉ <b id="coins">0</b></span></div>
+<div id="title"><h1>SHADOW RUN</h1><p>RUN BEYOND THE DARK</p></div>
+<div id="menu"><div class="card"><h2 id="heading">SHADOW RUN</h2><p id="message">مدينة المستقبل تنتظرك<br>اقفز فوق الحواجز واجمع الذهب</p><button id="start">ابدأ اللعب ⚡</button></div></div>
+<button id="jump" class="hidden">JUMP ↑</button>
+<div id="hint">اضغط على الشاشة أو زر القفز</div>
 <script>
-const c=document.getElementById('game');
-const ctx=c.getContext('2d');
-let player, obstacles, score, running, ended, frame;
+const c=document.getElementById('c'),x=c.getContext('2d');
+const menu=document.getElementById('menu'),start=document.getElementById('start');
+const title=document.getElementById('title'),jumpBtn=document.getElementById('jump');
+let w,h,ground,t=0,last=0,active=false,score=0,gold=0,speed=330,player,blocks=[],coins=[],sparks=[],buildings=[];
+function resize(){
+ w=innerWidth;h=innerHeight;c.width=w*devicePixelRatio;c.height=h*devicePixelRatio;
+ x.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);ground=h*.79;
+ buildings=[];let bx=0;
+ while(bx<w+100){let bw=25+Math.random()*65,bh=h*(.13+Math.random()*.4);buildings.push({x:bx,w:bw,h:bh});bx+=bw+5}
+}
 function reset(){
- player={x:65,y:355,w:30,h:40,vy:0,ground:true};
- obstacles=[];score=0;frame=0;running=true;ended=false;
- document.getElementById('score').textContent=0;
+ score=0;gold=0;speed=330;blocks=[];coins=[];sparks=[];
+ player={x:w*.18,y:ground-52,vy:0,on:true};
+ document.getElementById('score').textContent='0';
+ document.getElementById('coins').textContent='0';
+}
+function begin(){
+ reset();active=true;last=performance.now();menu.classList.add('hidden');
+ title.classList.add('hidden');jumpBtn.classList.remove('hidden');
 }
 function jump(){
- if(!running){if(ended)reset();return}
- if(player.ground){player.vy=-12;player.ground=false}
+ if(!active){begin();return}
+ if(player.on){player.vy=-Math.min(720,h*.95);player.on=false;burst(player.x,ground,12,'#45ffff')}
 }
-c.addEventListener('pointerdown',jump);
-document.getElementById('start').onclick=()=>{
- reset();jump();
-};
+start.onclick=begin;jumpBtn.onclick=jump;c.addEventListener('pointerdown',()=>{if(active)jump()});
+addEventListener('keydown',e=>{if(e.code==='Space'||e.code==='ArrowUp'){e.preventDefault();jump()}});
+function burst(a,b,n,col){for(let i=0;i<n;i++)sparks.push({x:a,y:b,vx:(Math.random()-.5)*250,vy:-Math.random()*230,life:.5,col})}
 function draw(){
- ctx.clearRect(0,0,360,460);
- let sky=ctx.createLinearGradient(0,0,0,460);
- sky.addColorStop(0,'#10112c');sky.addColorStop(1,'#25205a');
- ctx.fillStyle=sky;ctx.fillRect(0,0,360,460);
- ctx.fillStyle='#fff';
- for(let i=0;i<35;i++){
-  let x=(i*71)%360,y=(i*43)%300;
-  ctx.fillRect(x,y,2,2);
- }
- ctx.fillStyle='#20234c';
- for(let i=0;i<9;i++){
-  let x=i*45;
-  ctx.fillRect(x,280+(i%3)*15,30,100);
-  ctx.fillStyle='#51dfff';
-  ctx.fillRect(x+8,290+(i%3)*15,4,7);
-  ctx.fillStyle='#20234c';
- }
- ctx.fillStyle='#090a18';ctx.fillRect(0,395,360,65);
- ctx.strokeStyle='#50f5ff';ctx.lineWidth=3;
- ctx.beginPath();ctx.moveTo(0,395);ctx.lineTo(360,395);ctx.stroke();
- if(running){
-  player.vy+=0.55;player.y+=player.vy;
-  if(player.y>=355){player.y=355;player.vy=0;player.ground=true}
-  frame++;
-  if(frame%75===0)obstacles.push({x:370,w:24,h:30+Math.random()*20});
-  obstacles.forEach(o=>o.x-=4+score/100);
-  obstacles=obstacles.filter(o=>o.x>-40);
-  for(const o of obstacles){
-   if(player.x<o.x+o.w&&player.x+player.w>o.x&&player.y+player.h>395-o.h){
-    running=false;ended=true;
-   }
-  }
-  score+=0.08;
-  document.getElementById('score').textContent=Math.floor(score);
- }
- ctx.fillStyle='#50f5ff';ctx.shadowColor='#50f5ff';ctx.shadowBlur=15;
- ctx.fillRect(player.x,player.y,player.w,player.h);
- ctx.fillStyle='#10112c';ctx.fillRect(player.x+18,player.y+8,6,6);
- ctx.shadowBlur=0;
- ctx.fillStyle='#ff4c8b';
- obstacles.forEach(o=>{
-  ctx.beginPath();ctx.moveTo(o.x,395);ctx.lineTo(o.x+o.w/2,395-o.h);
-  ctx.lineTo(o.x+o.w,395);ctx.fill();
+ let g=x.createLinearGradient(0,0,0,h);g.addColorStop(0,'#050719');g.addColorStop(.55,'#171347');g.addColorStop(1,'#080a1c');x.fillStyle=g;x.fillRect(0,0,w,h);
+ let glow=x.createRadialGradient(w*.7,h*.4,2,w*.7,h*.4,h*.55);glow.addColorStop(0,'#842cff55');glow.addColorStop(1,'#05071900');x.fillStyle=glow;x.fillRect(0,0,w,h);
+ x.fillStyle='#a7faff';x.shadowColor='#00eaff';x.shadowBlur=30;x.beginPath();x.arc(w*.78,h*.2,Math.min(w,h)*.055,0,7);x.fill();x.shadowBlur=0;
+ buildings.forEach((b,i)=>{
+  let xx=((b.x-t*(i%3+1)*9)%(w+80)+w+80)%(w+80)-40;
+  x.fillStyle=['#10182f','#111b3d','#191332'][i%3];x.fillRect(xx,ground-b.h,b.w,b.h);
+  x.fillStyle=i%2?'#30eaff99':'#ff48dc99';
+  for(let yy=ground-b.h+10;yy<ground-8;yy+=17)for(let xx2=xx+6;xx2<xx+b.w-5;xx2+=13)if(Math.sin(xx2*yy)>.1)x.fillRect(xx2,yy,4,7);
+  x.fillStyle='#47efff';x.fillRect(xx,ground-b.h,b.w,2);
  });
- if(!running){
-  ctx.fillStyle='rgba(0,0,0,.7)';ctx.fillRect(0,0,360,460);
-  ctx.fillStyle='#fff';ctx.textAlign='center';
-  ctx.font='bold 28px Arial';
-  ctx.fillText(ended?'انتهت اللعبة!':'جاهز؟',180,210);
-  ctx.font='18px Arial';
-  ctx.fillText('نتيجتك: '+Math.floor(score),180,250);
-  ctx.fillText('اضغط ابدأ اللعب للمحاولة مجدداً',180,290);
+ x.fillStyle='#0b1027';x.fillRect(0,ground,w,h-ground);
+ x.strokeStyle='#35f7ff';x.shadowColor='#00eaff';x.shadowBlur=15;x.lineWidth=2;x.beginPath();x.moveTo(0,ground);x.lineTo(w,ground);x.stroke();x.shadowBlur=0;
+ for(let i=0;i<15;i++){let xx=((i*100-t*speed*.65)%(w+100)+w+100)%(w+100);x.strokeStyle='#26cfff55';x.beginPath();x.moveTo(xx,ground);x.lineTo(xx-60,h);x.stroke()}
+ blocks.forEach(b=>{x.save();x.shadowColor='#ff24da';x.shadowBlur=20;x.fillStyle='#d52cbf';x.fillRect(b.x,b.y,b.w,b.h);x.strokeStyle='#ffb7f8';x.strokeRect(b.x,b.y,b.w,b.h);x.restore()});
+ coins.forEach(q=>{x.save();x.translate(q.x,q.y);x.shadowColor='#ffd348';x.shadowBlur=18;x.fillStyle='#ffce43';x.beginPath();x.arc(0,0,10,0,7);x.fill();x.strokeStyle='#fff5ac';x.stroke();x.restore()});
+ if(player){
+  let bob=player.on?Math.sin(t*15)*2:0,py=player.y+bob,px=player.x;
+  x.fillStyle='#173c61';x.shadowColor='#00eaff';x.shadowBlur=22;
+  x.fillRect(px+7,py+15,20,24);
+  x.fillStyle='#b5ffff';x.beginPath();x.arc(px+17,py+9,9,0,7);x.fill();
+  x.fillStyle='#ff42e6';x.fillRect(px+19,py+6,7,3);
+  x.strokeStyle='#57faff';x.lineWidth=6;x.lineCap='round';
+  x.beginPath();x.moveTo(px+11,py+37);x.lineTo(px+7+Math.sin(t*15)*8,py+50);x.stroke();
+  x.beginPath();x.moveTo(px+23,py+37);x.lineTo(px+25-Math.sin(t*15)*8,py+50);x.stroke();x.shadowBlur=0;
  }
- requestAnimationFrame(draw);
+ sparks.forEach(p=>{x.globalAlpha=Math.max(0,p.life*2);x.fillStyle=p.col;x.fillRect(p.x,p.y,4,4)});x.globalAlpha=1;
 }
-reset();running=false;draw();
+function endGame(){
+ active=false;jumpBtn.classList.add('hidden');menu.classList.remove('hidden');title.classList.remove('hidden');
+ document.getElementById('heading').textContent='انتهت الجولة!';
+ document.getElementById('message').innerHTML='المسافة: '+Math.floor(score)+' متر<br>العملات: '+gold+'<br>جرّب مرة ثانية وحطّم رقمك';
+ start.textContent='إعادة اللعب ⚡';
+}
+function update(dt){
+ t+=dt;score+=speed*dt*.025;speed=Math.min(620,330+score*.7);
+ player.vy+=1700*dt;player.y+=player.vy*dt;
+ if(player.y+52>=ground){player.y=ground-52;player.vy=0;player.on=true}
+ if(!blocks.length||blocks[blocks.length-1].x<w-230)if(Math.random()<dt*1.4)blocks.push({x:w+20,w:25+Math.random()*18,h:35+Math.random()*35,y:0});
+ blocks.forEach(b=>{b.x-=speed*dt;b.y=ground-b.h});
+ coins.forEach(q=>q.x-=speed*dt);
+ if(Math.random()<dt*.7){let cy=ground-80-Math.random()*85;for(let i=0;i<3;i++)coins.push({x:w+20+i*32,y:cy})}
+ for(let i=coins.length-1;i>=0;i--){let q=coins[i];if(q.x>player.x-5&&q.x<player.x+34&&q.y>player.y-5&&q.y<player.y+57){gold++;document.getElementById('coins').textContent=gold;burst(q.x,q.y,8,'#ffd348');coins.splice(i,1)}}
+ blocks=blocks.filter(b=>b.x+b.w>0);coins=coins.filter(q=>q.x>-20);
+ for(const b of blocks)if(player.x+28>b.x&&player.x<b.x+b.w&&player.y+48>b.y){burst(player.x+15,player.y+20,20,'#ff42e6');endGame();break}
+ sparks.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=300*dt;p.life-=dt});sparks=sparks.filter(p=>p.life>0);
+ document.getElementById('score').textContent=Math.floor(score);
+}
+function frame(now){let dt=Math.min((now-last)/1000||0,.03);last=now;if(active)update(dt);draw();requestAnimationFrame(frame)}
+addEventListener('resize',resize);resize();reset();requestAnimationFrame(frame);
 </script>
 </body>
 </html>
+
